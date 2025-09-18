@@ -5,6 +5,7 @@ pros::MotorGroup left_mg({-1});    // Creates a motor group with forwards ports 
 pros::MotorGroup right_mg({6});  // Creates a motor group with forwards port 5 and reversed ports 4 & 6
 pros::Motor intake(16);
 pros::adi::AnalogIn line_tracker('A');
+pros::Imu imu(10);
 
 /**
  * A callback function for LLEMU's center button.
@@ -31,6 +32,7 @@ void on_center_button() {
 void initialize() {
 	pros::lcd::initialize();
 	pros::lcd::set_text(1, "Hello PROS User!");
+	line_tracker.calibrate();
 
 	pros::lcd::register_btn1_cb(on_center_button);
 }
@@ -65,14 +67,28 @@ void competition_initialize() {}
  * from where it left off.
  */
 void autonomous() {
+	bool turnLeft = true;
+	int turnSpeed = 30;
+
 	while (true) {
-		master.print(0,0, "Light: %.2d", line_tracker.get_value());
+		master.print(0,0, ": %.2f", imu.get_heading());
 		if (line_tracker.get_value() < 2800) {
 			left_mg.move(80);
 			right_mg.move(80);
 		} else {
-			left_mg.move(0);
-			right_mg.move(0);
+			if (turnLeft) {
+				left_mg.move(turnSpeed);
+				right_mg.move(-turnSpeed);
+			} else {
+				left_mg.move(-turnSpeed);
+				right_mg.move(turnSpeed);
+			}
+
+			if (imu.get_heading() <= 315 && imu.get_heading() >= 180) {
+				turnLeft = false;
+			} else if (imu.get_heading() >=45 && imu.get_heading() < 180) {
+				turnLeft = true;
+			}
 		}
 	}
 }
@@ -92,7 +108,7 @@ void autonomous() {
  */
 void opcontrol() {
 	while (true) {
-		master.print(0,0, "Light: %.2d", line_tracker.get_value());
+		master.print(0,0, ": %.2f", imu.get_heading());
 
 		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
 		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
