@@ -6,6 +6,7 @@ pros::MotorGroup right_mg({6});  // Creates a motor group with forwards port 5 a
 pros::Motor intake(16);
 pros::adi::AnalogIn line_tracker('A');
 pros::Imu imu(10);
+pros::Distance dist(9);
 
 /**
  * A callback function for LLEMU's center button.
@@ -71,7 +72,8 @@ void autonomous() {
 	int turnSpeed = 30;
 
 	while (true) {
-		master.print(0,0, ": %.2f", imu.get_heading());
+		master.print(0,0, ": %.2d", dist.get_distance());
+		while (dist.get_distance() > 200){
 		if (line_tracker.get_value() < 2800) {
 			left_mg.move(80);
 			right_mg.move(80);
@@ -88,8 +90,16 @@ void autonomous() {
 				turnLeft = false;
 			} else if (imu.get_heading() >=45 && imu.get_heading() < 180) {
 				turnLeft = true;
-			}
+			} 
 		}
+		}
+		do {
+		intake.move_velocity(-150);
+		left_mg.move(80);
+		right_mg.move(80);
+		} while (dist.get_distance() > 20);
+		left_mg.move(0);
+		right_mg.move(0);
 	}
 }
 
@@ -108,7 +118,7 @@ void autonomous() {
  */
 void opcontrol() {
 	while (true) {
-		master.print(0,0, ": %.2f", imu.get_heading());
+		master.print(0,0, ": %.8d", dist.get_distance());
 
 		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
 		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
