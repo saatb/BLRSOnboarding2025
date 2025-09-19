@@ -67,14 +67,19 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
+
 void autonomous() {
 	bool turnLeft = true;
-	int turnSpeed = 30;
+	int defaultSpeed = 20;
+	int turnSpeed = 20;
+
+	unsigned long startTime = pros::millis();
 
 	while (true) {
 		master.print(0,0, ": %.2d", dist.get_distance());
-		while (dist.get_distance() > 200){
-		if (line_tracker.get_value() < 2800) {
+
+		// --- line-tracking runs every loop ---
+		if (line_tracker.get_value() < 2750) {
 			left_mg.move(80);
 			right_mg.move(80);
 		} else {
@@ -88,18 +93,27 @@ void autonomous() {
 
 			if (imu.get_heading() <= 315 && imu.get_heading() >= 180) {
 				turnLeft = false;
-			} else if (imu.get_heading() >=45 && imu.get_heading() < 180) {
+			} else if (imu.get_heading() >= 45 && imu.get_heading() < 180) {
 				turnLeft = true;
-			} 
+			}
 		}
+
+		// timed amount
+		if (pros::millis() - startTime >= 20000 && dist.get_distance() < 200) {
+			do {
+				intake.move_velocity(-150);
+				left_mg.move(80);
+				right_mg.move(80);
+				pros::delay(10);
+			} while (dist.get_distance() > 20);
+
+			left_mg.move(0);
+			right_mg.move(0);
+
+			startTime = pros::millis();
 		}
-		do {
-		intake.move_velocity(-150);
-		left_mg.move(80);
-		right_mg.move(80);
-		} while (dist.get_distance() > 20);
-		left_mg.move(0);
-		right_mg.move(0);
+
+		pros::delay(10);
 	}
 }
 
@@ -118,7 +132,7 @@ void autonomous() {
  */
 void opcontrol() {
 	while (true) {
-		master.print(0,0, ": %.8d", dist.get_distance());
+		master.print(0,0, ": %.8d", line_tracker.get_value());
 
 		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
 		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
