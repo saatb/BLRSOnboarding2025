@@ -72,13 +72,19 @@ void autonomous() {
 	bool turnLeft = true;
 	int defaultSpeed = 20;
 	int turnSpeed = 20;
+	bool reversed = false;
+	bool lineTracking = true;
 
 	unsigned long startTime = pros::millis();
-
+	
+	left_mg.move(80);
+	right_mg.move(80);
+	pros::delay(500);
 	while (true) {
 		master.print(0,0, ": %.2d", dist.get_distance());
 
 		// --- line-tracking runs every loop ---
+		if (lineTracking){
 		if (line_tracker.get_value() < 2750) {
 			left_mg.move(80);
 			right_mg.move(80);
@@ -91,28 +97,43 @@ void autonomous() {
 				right_mg.move(turnSpeed);
 			}
 
-			if (imu.get_heading() <= 315 && imu.get_heading() >= 180) {
+			if (imu.get_heading() <= 325 && imu.get_heading() >= 180) {
 				turnLeft = false;
-			} else if (imu.get_heading() >= 45 && imu.get_heading() < 180) {
+			} else if (imu.get_heading() >= 35 && imu.get_heading() < 180) {
 				turnLeft = true;
 			}
 		}
-
-		// timed amount
+	}
+		// timed amount - avoid false positives on the legs of the goal
 		if (pros::millis() - startTime >= 20000 && dist.get_distance() < 200) {
-			do {
+			lineTracking = false;
+			while (dist.get_distance() > 20){
 				intake.move_velocity(-150);
 				left_mg.move(80);
 				right_mg.move(80);
 				pros::delay(10);
-			} while (dist.get_distance() > 20);
+			}
 
 			left_mg.move(0);
 			right_mg.move(0);
-
+			intake.move_velocity(-50); //keep ball in intake
 			startTime = pros::millis();
 		}
 
+		if (dist.get_distance() < 20) { //if we have a ball, begin coming back
+			if (!reversed) {
+				while ((imu.get_heading() < 170) || (imu.get_heading() > 190)) { //if not turned around, turn around!
+					left_mg.move(turnSpeed);
+					right_mg.move(-turnSpeed);
+				}
+				reversed = true;
+				intake.move_velocity(0);
+				left_mg.move(127);
+				right_mg.move(127);
+				pros::delay(1500);
+				intake.move_velocity(200);
+			}
+		}
 		pros::delay(10);
 	}
 }
